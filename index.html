@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memestone</title>
+  <link rel="stylesheet" href="stile.css">
+</head>
+<body>
+  <header class="barra">
+    <h1>Memestone</h1>
+    <nav>
+      <button data-azione="regole">❓ Regole</button>
+      <button data-azione="collezione">📚 Carte</button>
+      <button data-azione="nuova">🔄 Nuova</button>
+    </nav>
+  </header>
+
+  <main class="tavolo">
+    <section class="lato nemico">
+      <div id="info-nemico"></div>
+      <div id="campo-nemico" class="campo"></div>
+    </section>
+
+    <div class="centro">
+      <div id="stato"></div>
+      <div class="bottoni-centro">
+        <button id="annulla" data-azione="annulla" hidden>Annulla</button>
+        <button id="fine-turno" data-azione="fine">Fine turno</button>
+      </div>
+    </div>
+
+    <section class="lato mio">
+      <div id="campo-mio" class="campo"></div>
+      <div id="info-mio"></div>
+    </section>
+
+    <div id="mano" class="mano"></div>
+    <div id="log" class="log"></div>
+  </main>
+
+  <div id="annuncio" class="annuncio" hidden></div>
+
+  <div id="finestra-mulligan" class="finestra" hidden>
+    <div class="riquadro largo">
+      <h2 id="mulligan-titolo"></h2>
+      <p>Tocca le carte che vuoi <b>cambiare</b>, poi conferma.</p>
+      <div id="mulligan-carte" class="griglia"></div>
+      <button class="principale" data-azione="conferma-mulligan">Conferma</button>
+    </div>
+  </div>
+
+  <div id="finestra-fine" class="finestra" hidden>
+    <div class="riquadro">
+      <h2 id="fine-titolo"></h2>
+      <p id="fine-testo"></p>
+      <button class="principale" data-azione="nuova">Gioca ancora</button>
+    </div>
+  </div>
+
+  <div id="finestra-collezione" class="finestra chiudibile" hidden>
+    <div class="riquadro largo">
+      <button class="chiudi" data-azione="chiudi">✕</button>
+      <h2>📚 Tutte le carte</h2>
+      <div id="griglia-collezione"></div>
+    </div>
+  </div>
+
+  <div id="finestra-dettaglio" class="finestra chiudibile" hidden>
+    <div class="riquadro stretto">
+      <button class="chiudi" data-azione="chiudi">✕</button>
+      <div id="dettaglio" class="dettaglio"></div>
+    </div>
+  </div>
+
+  <div id="finestra-regole" class="finestra chiudibile" hidden>
+    <div class="riquadro">
+      <button class="chiudi" data-azione="chiudi">✕</button>
+      <h2>❓ Come si gioca</h2>
+      <ul class="regole">
+        <li>Vince chi porta a <b>0</b> la vita dell'eroe avversario. Si parte da 30.</li>
+        <li>Si lancia una moneta per decidere chi inizia. Chi inizia pesca 3 carte, l'altro 4 più <b>La Moneta</b> 🪙.</li>
+        <li>All'inizio puoi <b>cambiare</b> le carte che non ti piacciono.</li>
+        <li>Ogni turno ricevi un <b>cristallo di mana</b> 💎 in più (massimo 10) e peschi una carta.</li>
+        <li><b>Tocca una carta</b> per giocarla. Se serve un bersaglio, tocca poi chi vuoi colpire.</li>
+        <li>I <b>personaggi</b> restano sul campo e dal turno dopo possono attaccare: tocca il tuo personaggio che brilla, poi il nemico. Negli scontri si fanno danni a vicenda.</li>
+        <li>Gli <b>eventi</b> si usano una volta. Le <b>trappole</b> restano nascoste e scattano da sole nel turno avversario.</li>
+        <li>Il <b>Potere Eroe</b> 🗯️ (vicino al tuo eroe) costa 2 mana e si usa una volta per turno.</li>
+        <li>Massimo 7 personaggi sul campo e 10 carte in mano.</li>
+        <li>Tocca un personaggio sul campo per leggerne la carta.</li>
+      </ul>
+      <h3>Abilità</h3>
+      <ul id="glossario" class="regole"></ul>
+      <button class="principale" data-azione="chiudi">Ho capito!</button>
+    </div>
+  </div>
+
+  <script src="carte/esempio.js"></script>
+  <script src="carte/personaggi.js"></script>
+  <script src="carte/eventi.js"></script>
+  <script src="carte/trappole.js"></script>
+  <script src="js/regole.js"></script>
+  <script src="js/computer.js"></script>
+  <script src="js/schermo.js"></script>
+</body>
+</html>
