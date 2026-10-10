@@ -6,6 +6,7 @@ import { S, Z, suRidimensiona } from './scena.js';
 import { tween, ease, attendi, chiudiTween, VEL } from './motore.js';
 import { Carta3D, Token, Eroe3D, BottoneTurno, Freccia } from './oggetti.js';
 import { FX } from './effetti.js';
+import { suona, sbloccaAudio } from './suoni.js';
 import * as UI from '../interfaccia.js';
 
 const PI = Math.PI;
@@ -361,6 +362,7 @@ function annulla() {
 const ANIMAZIONI = {
   async turno(ev) {
     UI.banner(ev.lato);
+    suona(ev.lato === 0 ? 'turno' : 'turnoNemico');
     T.bottone.setStato(ev.lato === 0 ? 'fine' : 'nemico');
     if (ev.lato === 0) {
       const e = T.eroi[0];
@@ -376,6 +378,7 @@ const ANIMAZIONI = {
       const c = creaCartaMano(h);
       T.mano.push(c);
       layoutMano();
+      suona('pesca');
       T.eroi[0].aggiornaMazzo(G.g[0].mazzo.length);
       await attendi(420);
     } else {
@@ -383,6 +386,7 @@ const ANIMAZIONI = {
       const c = creaRetro(ev.uid);
       T.retriOrdine.push(c);
       layoutRetri();
+      suona('pesca');
       await attendi(320);
     }
   },
@@ -398,6 +402,7 @@ const ANIMAZIONI = {
     const su = c.gruppo.position.clone().add(v3(0, 2, 0.5));
     await tweenTrasforma(c.gruppo, { pos: su, scala: 1 }, 380, ease.out);
     FX.dissolvi(su, 0xff6a2a);
+    suona('morte');
     UI.stato('🔥 Mano piena: carta bruciata!');
     await tween(450, e => { c.impostaOpacita(1 - e); c.gruppo.scale.setScalar(1 + e * 0.3); });
     T.vive.delete(c);
@@ -405,6 +410,7 @@ const ANIMAZIONI = {
   },
 
   async gioca(ev) {
+    suona('gioca');
     if (ev.lato === 0) {
       let c = T.carte.get(ev.uidMano);
       if (c) {
@@ -484,7 +490,9 @@ const ANIMAZIONI = {
       tok.gruppo.position.lerpVectors(inizio, fine, e);
       tok.gruppo.scale.setScalar(s * (1.4 - 0.45 * e));
     }, ease.in);
-    FX.atterraggio(fine, ha(m, 'provocazione') || m.carta.costo >= 6);
+    const pesante = ha(m, 'provocazione') || m.carta.costo >= 6;
+    FX.atterraggio(fine, pesante);
+    suona('atterraggio', pesante);
     await tween(200, e => tok.gruppo.scale.setScalar(s * (0.95 + Math.sin(e * PI) * 0.12 + e * 0.05)), ease.lineare);
     tok.molla = true;
   },
@@ -503,10 +511,12 @@ const ANIMAZIONI = {
     a.molla = false;
     const s = a.scalaTarget;
     await tween(160, e => { g.position.y = 0.85 * e; g.scale.setScalar(s * (1 + 0.14 * e)); }, ease.out);
+    suona('attacco');
     const da = g.position.clone();
     await tween(170, e => g.position.lerpVectors(da, stop, e), ease.in);
     const forza = Math.min(2, (ev.forza || 1) / 4 + 0.4);
     FX.impatto(dest, { forza, parola: Math.random() < (ev.forza >= 5 ? 0.8 : 0.4) ? FX.parolaMeme() : null });
+    suona('impatto', forza);
     const ritorno = g.position.clone();
     tween(340, e => {
       g.position.lerpVectors(ritorno, inizio, e);
@@ -521,6 +531,7 @@ const ANIMAZIONI = {
     o.mostraVita(ev.vita, 'giu');
     if (o instanceof Eroe3D) o.mostraArmatura(ev.armatura);
     o.scuoti();
+    suona('danno');
     const p = o.posizione();
     FX.splat(p, ev.valore);
     FX.particelle({ pos: p, n: 18 + ev.valore * 4, velocita: [1, 3], colori: [0xff4a3c, 0xffb36b], vita: [0.3, 0.6], dim: [0.08, 0.2], gravita: -6, attrito: 2.5 });
@@ -533,6 +544,7 @@ const ANIMAZIONI = {
     const max = o instanceof Eroe3D ? REGOLE.VITA_EROE : o.m.vitaMax;
     o.mostraVita(ev.vita, ev.vita < max ? 'giu' : '');
     FX.cura(o.posizione(), ev.valore);
+    suona('cura');
     await attendi(450);
   },
 
@@ -541,6 +553,7 @@ const ANIMAZIONI = {
     if (!o) return;
     o.setScudoDivino(false);
     FX.scudoRotto(o.posizione());
+    suona('scudo');
     await attendi(350);
   },
 
@@ -549,6 +562,7 @@ const ANIMAZIONI = {
     if (!o) return;
     o.setCongelato(true);
     FX.ghiaccio(o.posizione());
+    suona('ghiaccio');
     await attendi(380);
   },
 
@@ -557,6 +571,7 @@ const ANIMAZIONI = {
     if (!o) return;
     o.setSilenziato(true);
     FX.silenzio(o.posizione());
+    suona('silenzio');
     await attendi(380);
   },
 
@@ -566,6 +581,7 @@ const ANIMAZIONI = {
     o.mostraAttacco(ev.attacco, 'su');
     o.mostraVita(ev.vita, 'su');
     FX.dorato(o.posizione(), ev.testo);
+    suona('potenzia');
     await attendi(420);
   },
 
@@ -574,6 +590,7 @@ const ANIMAZIONI = {
     if (!o) return;
     o.mostraArmatura(ev.armatura);
     FX.dorato(o.posizione(), `+${ev.valore} 🛡️`);
+    suona('potenzia');
     await attendi(420);
   },
 
@@ -588,6 +605,7 @@ const ANIMAZIONI = {
     await tween(240, e => tok.friggi(e), ease.in);
     const p = tok.posizione();
     FX.morte(p, coloriToken(tok));
+    suona('morte');
     tok.distruggi();
     layoutCampo(tok.lato);
     await attendi(420);
@@ -600,8 +618,10 @@ const ANIMAZIONI = {
     const colore = COLORE_EFFETTO[ev.effetto] || 0xffffff;
     const da = sorgente.posizione();
     if (bersagli.length >= 3) {
+      suona('ondata');
       await FX.ondata(da, bersagli.map(b => b.posizione()), colore);
     } else {
+      suona('proiettile');
       await Promise.all(bersagli.map(b => FX.proiettile(da, b.posizione(), { colore, emoji: ev.emoji })));
     }
   },
@@ -609,6 +629,7 @@ const ANIMAZIONI = {
   async potere(ev) {
     const e = T.eroi[ev.lato];
     e.giraPotere();
+    suona('potere');
     const p = new THREE.Vector3();
     e.potere.getWorldPosition(p);
     FX.scintillio(p, 0xb78cff);
@@ -618,6 +639,7 @@ const ANIMAZIONI = {
 
   async trappola(ev) {
     UI.bannerTrappola();
+    suona('trappola');
     const e = T.eroi[ev.lato];
     const c = new Carta3D(ev.carta);
     T.vive.add(c);
@@ -648,7 +670,10 @@ const ANIMAZIONI = {
       FX.esplosioneEroe(e.posizione());
       e.ritratto.visible = false;
     }
-    await attendi(1500);
+    suona('esplosione');
+    await attendi(1100);
+    suona(ev.vincitore === 0 ? 'vittoria' : 'sconfitta');
+    await attendi(400);
     UI.mostraFine(ev.vincitore);
   }
 };
@@ -738,7 +763,7 @@ function aggiornaHover() {
   if (T.tipoPuntatore !== 'mouse' || T.trascina || T.giu?.mosso) return;
   const info = scegliOggetto();
   const carta = info?.tipo === 'carta' ? T.carte.get(info.uid) : null;
-  if (carta !== T.hover) { T.hover = carta; layoutMano(); }
+  if (carta !== T.hover) { T.hover = carta; layoutMano(); if (carta) suona('hover'); }
   if (info?.tipo === 'servitore') {
     const tok = T.token.get(info.uid);
     if (tok) UI.anteprima(tok.m, T.puntatoreSchermo.x);
@@ -768,7 +793,7 @@ function toccoCarta(uid) {
   // Col dito: il primo tocco ingrandisce la carta, il secondo la gioca
   if (T.tipoPuntatore !== 'mouse' && T.sollevata !== c) { T.sollevata = c; return; }
   T.sollevata = null;
-  if (!puoInteragire() || !puoGiocare(0, h)) { c.vibra(); return; }
+  if (!puoInteragire() || !puoGiocare(0, h)) { c.vibra(); suona('errore'); return; }
   const k = sceltaRichiesta(h.carta);
   if (k && bersagliScelta(0, k, null).length) T.inAttesa = { tipo: 'carta', uid, chiave: k };
   else azione(() => giocaCarta(0, uid, null));
@@ -784,6 +809,7 @@ function toccoPotere() {
 function premiFine() {
   if (!puoInteragire()) return;
   T.bottone.premi();
+  suona('bottone');
   annulla();
   T.sollevata = T.hover = null;
   fineTurno();
@@ -792,6 +818,9 @@ function premiFine() {
 function collegaComandi() {
   const tela = S.renderer.domElement;
   tela.style.touchAction = 'none';
+  // L'audio parte al primo tocco/clic (regola dei browser)
+  addEventListener('pointerdown', sbloccaAudio, true);
+  addEventListener('keydown', sbloccaAudio, true);
 
   tela.addEventListener('pointerdown', e => {
     T.tipoPuntatore = e.pointerType;

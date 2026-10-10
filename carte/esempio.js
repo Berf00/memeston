@@ -13,7 +13,7 @@ const CARTE_ESEMPIO = [
   },
   {
     id: 'es-gamer', nome: 'Il Gamer Tossico', tipo: 'servitore',
-    costo: 2, attacco: 3, vita: 1, emoji: '🎮', abilita: ['carica'],
+    costo: 2, attacco: 3, vita: 1, emoji: '🎮', abilita: ['assalto'],
     frase: 'Non è colpa mia, è il lag.'
   },
   {

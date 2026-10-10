@@ -2,6 +2,7 @@
 //  INTERFACCIA HTML sopra il 3D: menu, finestre, banner e anteprime
 // =====================================================================
 import { LIVELLI, S, impostaQualita, salvaQualita } from './3d/scena.js';
+import { audio, impostaMuto, impostaVolume, sbloccaAudio, suona } from './3d/suoni.js';
 
 const $ = sel => document.querySelector(sel);
 
@@ -79,6 +80,12 @@ export function init({ suNuova }) {
         if (cb) cb([...daCambiare]);
         break;
       }
+      case 'audio':
+        sbloccaAudio();
+        impostaMuto(!audio().muto);
+        aggiornaAudio();
+        suona('bottone');
+        break;
       case 'qualita': {
         const v = el.dataset.valore;
         if (v === 'auto') impostaQualita(S.qualita, false);
@@ -92,7 +99,18 @@ export function init({ suNuova }) {
   document.querySelectorAll('.finestra:not(.obbligatoria)').forEach(f =>
     f.addEventListener('click', e => { if (e.target === f) f.hidden = true; }));
   addEventListener('keydown', e => { if (e.key === 'Escape') chiudiFinestre(); });
+  const vol = $('#volume');
+  vol.value = Math.round(audio().volume * 100);
+  vol.addEventListener('input', () => { impostaVolume(vol.value / 100); if (audio().muto) { impostaMuto(false); aggiornaAudio(); } });
+  vol.addEventListener('change', () => suona('pesca'));
+  aggiornaAudio();
   S.suFps = fps => { const el = $('#fps'); if (el) el.textContent = `${Math.round(fps)} FPS · qualità ${LIVELLI[S.qualita].nome}${S.auto ? ' (auto)' : ''}`; };
+}
+
+function aggiornaAudio() {
+  const muto = audio().muto;
+  $('#bottone-audio').textContent = muto ? '🔇' : '🔊';
+  $('#bottone-audio-2').textContent = muto ? '🔇 Suoni spenti (tocca per accendere)' : '🔊 Suoni accesi (tocca per spegnere)';
 }
 
 function chiudiTutto() {

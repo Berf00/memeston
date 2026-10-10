@@ -27,11 +27,19 @@ const IA = {
       await pausa(IA.PAUSA);
     }
 
-    if (vivo() && puoUsarePotere(1)) {
-      const b = IA.bersaglioPotere();
-      if (b && usaPotere(1, b.uid)) {
+    // Potere Eroe (pesca una carta): lo usa col mana avanzato, se la mano non è quasi piena
+    if (vivo() && puoUsarePotere(1) && p.mano.length < REGOLE.MAX_MANO - 1) {
+      const k = sceltaEffetti(POTERE_EROE.effetto);
+      const b = k ? IA.bersaglioPotere() : null;
+      if ((!k || b) && usaPotere(1, b ? b.uid : null)) {
         await Eventi.suCambio();
         await pausa(IA.PAUSA);
+        // Se la carta pescata si può giocare subito, la gioca
+        const mossa = IA.miglioreCarta();
+        if (vivo() && mossa && giocaCarta(1, mossa.uid, mossa.bersaglio)) {
+          await Eventi.suCambio();
+          await pausa(IA.PAUSA);
+        }
       }
     }
 

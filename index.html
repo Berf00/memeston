@@ -27,7 +27,8 @@
       <button data-azione="regole" title="Regole">❓</button>
       <button data-azione="collezione" title="Tutte le carte">📚</button>
       <button data-azione="cronologia" title="Cronologia">📜</button>
-      <button data-azione="impostazioni" title="Grafica">⚙️</button>
+      <button data-azione="audio" id="bottone-audio" title="Audio">🔊</button>
+      <button data-azione="impostazioni" title="Grafica e audio">⚙️</button>
       <button data-azione="nuova" title="Nuova partita">🔄</button>
     </nav>
   </header>
@@ -85,10 +86,13 @@
   <div id="finestra-impostazioni" class="finestra" hidden>
     <div class="riquadro">
       <button class="chiudi" data-azione="chiudi">✕</button>
-      <h2>⚙️ Grafica</h2>
+      <h2>⚙️ Grafica e audio</h2>
       <p class="nota">Con "Automatica" il gioco abbassa la qualità da solo se il dispositivo rallenta.</p>
       <div id="opzioni-qualita" class="opzioni"></div>
       <p id="fps" class="nota"></p>
+      <h3>🔊 Volume</h3>
+      <input id="volume" class="volume" type="range" min="0" max="100" step="5" aria-label="Volume">
+      <p><button class="opzione" data-azione="audio" id="bottone-audio-2"></button></p>
     </div>
   </div>
 
@@ -104,7 +108,7 @@
         <li><b>Trascina una carta</b> sul tavolo per giocarla (o toccala due volte). Se serve un bersaglio, appare una freccia: portala sul bersaglio.</li>
         <li>I <b>personaggi</b> possono attaccare dal turno dopo: <b>trascinali</b> sul nemico (o toccali e poi tocca il nemico).</li>
         <li>Gli <b>eventi</b> si usano una volta. Le <b>trappole</b> restano nascoste e scattano da sole nel turno avversario.</li>
-        <li>Il <b>Potere Eroe</b> 🗯️ (la moneta vicino al tuo eroe) costa 2 mana e si usa una volta per turno.</li>
+        <li>Il <b>Potere Eroe</b> 📱 (la moneta vicino al tuo eroe) costa 2 mana, ti fa <b>pescare una carta</b> e si usa una volta per turno.</li>
         <li>Massimo 7 personaggi sul campo e 10 carte in mano.</li>
         <li>Tocca un personaggio per leggere la sua carta (col mouse basta passarci sopra).</li>
       </ul>

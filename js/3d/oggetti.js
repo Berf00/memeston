@@ -282,7 +282,7 @@ export class Token {
     this.bolla.visible = ha(m, 'scudoDivino');
     this.ghiaccio.visible = !!m.congelato;
     this.furtivo = ha(m, 'furtivita');
-    this.zzz.visible = m.dorme && !ha(m, 'carica') && !ha(m, 'assalto');
+    this.zzz.visible = m.dorme && !ha(m, 'assalto');
     this.setSilenziato(m.silenziato);
     const icone = [];
     for (const a of m.abilita) if (!['provocazione', 'scudoDivino', 'furtivita'].includes(a)) icone.push(ABILITA[a]?.icona || '');

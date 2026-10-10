@@ -313,6 +313,7 @@ button.principale {
 .separatore { margin-top: 28px; border-top: 1px solid var(--pannello-bordo); padding-top: 18px; }
 .opzioni { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0; }
 .opzione { border: 2px solid transparent; }
+.volume { width: min(280px, 100%); accent-color: var(--oro); }
 .opzione.attiva { border-color: var(--oro); background: rgba(242, 193, 78, 0.2); }
 
 @media (max-width: 560px) {

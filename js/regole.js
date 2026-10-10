@@ -17,8 +17,8 @@ const REGOLE = {
 
 // Potere Eroe: costa 2 mana, si usa una volta per turno
 const POTERE_EROE = {
-  nome: 'Frecciatina', emoji: '🗯️', costo: 2,
-  effetto: { tipo: 'danno', valore: 1, bersaglio: 'qualsiasi' }
+  nome: 'Scrollata', emoji: '📱', costo: 2,
+  effetto: { tipo: 'pesca', valore: 1 }
 };
 
 // Chi gioca per secondo riceve La Moneta
@@ -28,14 +28,14 @@ const LA_MONETA = {
   frase: 'Chi gioca per secondo la riceve.'
 };
 
+// I nomi delle abilità sono quelli del nostro gruppo (tra parentesi l'equivalente in Hearthstone)
 const ABILITA = {
-  provocazione: { nome: 'Provocazione', icona: '🛡️', spiega: 'I nemici devono attaccare prima questo servitore.' },
-  carica: { nome: 'Carica', icona: '⚡', spiega: "Può attaccare subito, anche l'eroe." },
-  assalto: { nome: 'Assalto', icona: '🏃', spiega: "Può attaccare subito, ma solo i servitori." },
-  scudoDivino: { nome: 'Scudo Divino', icona: '✨', spiega: 'Il primo danno che subisce viene ignorato.' },
+  provocazione: { nome: 'Viecce', icona: '🛡️', spiega: 'I nemici devono attaccare prima questo personaggio. (Provocazione)' },
+  assalto: { nome: 'Te Parto', icona: '🏃', spiega: 'Può attaccare subito, ma solo i personaggi nemici. (Assalto)' },
+  scudoDivino: { nome: "'Nme Toccà", icona: '✨', spiega: 'Il primo danno che subisce viene ignorato. (Scudo Divino)' },
   furiaDelVento: { nome: 'Furia del Vento', icona: '💨', spiega: 'Può attaccare due volte per turno.' },
   furtivita: { nome: 'Furtività', icona: '🥷', spiega: 'Non può essere attaccato né bersagliato finché non attacca.' },
-  velenoso: { nome: 'Velenoso', icona: '🧪', spiega: 'Distrugge qualsiasi servitore a cui infligge danni.' },
+  velenoso: { nome: 'Zaccagnata', icona: '🧪', spiega: 'Distrugge qualsiasi personaggio a cui infligge danni. (Velenoso)' },
   furtoVitale: { nome: 'Furto Vitale', icona: '🩸', spiega: 'I danni che infligge curano il tuo eroe.' }
 };
 
@@ -370,7 +370,7 @@ function puoAttaccare(m) {
   if (!m || m.eroe || G.fase !== 'gioco' || G.turno !== m.lato) return false;
   if (m.congelato || m.attacco <= 0) return false;
   if (m.attacchiFatti >= (ha(m, 'furiaDelVento') ? 2 : 1)) return false;
-  if (m.dorme && !ha(m, 'carica') && !ha(m, 'assalto')) return false;
+  if (m.dorme && !ha(m, 'assalto')) return false;
   return true;
 }
 
@@ -381,7 +381,7 @@ function bersagliAttacco(i, m) {
   const prov = visibili.filter(x => ha(x, 'provocazione'));
   if (prov.length) return prov.map(x => x.uid);
   const lista = visibili.map(x => x.uid);
-  if (!(m.dorme && !ha(m, 'carica'))) lista.push(nem.eroe.uid); // Assalto: niente eroe nel primo turno
+  if (!m.dorme) lista.push(nem.eroe.uid); // "Te Parto": niente eroe nel primo turno
   return lista;
 }
 

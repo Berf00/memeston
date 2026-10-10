@@ -82,7 +82,7 @@ export function creaScena(contenitore) {
   const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
   const composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(scene, camera));
-  S.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.55, 0.45, 0.86);
+  S.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.42, 0.4, 0.9);
   composer.addPass(S.bloom);
   composer.addPass(new OutputPass());
   S.composer = composer;

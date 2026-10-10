@@ -6,7 +6,7 @@ import { S, scuoti } from './scena.js';
 import { tween, ease, casuale, scegli } from './motore.js';
 import { texScritta, texSplat } from './texture.js';
 
-const PAROLE_MEME = ['BRUH', 'OOF', 'BONK', 'RIP', 'LOL', 'POW', 'F', 'EZ', 'SKILL ISSUE', 'NOOO', 'GG'];
+const PAROLE_MEME = ['BRUH', 'OOF', 'BONK', 'LOL', 'POW', 'EZ', 'SKILL ISSUE', 'NOOO', 'GG'];
 const EMOJI_FESTA = ['🔥', '✨', '😂', '💯', '😎', '👀'];
 
 // ---------- Particelle (un solo oggetto per migliaia di punti: velocissimo) ----------
@@ -250,6 +250,7 @@ export const FX = {
   particelle(opz) { particelle.emetti(opz); },
 
   lampo(pos, colore = 0xffaa55, intensita = 30, durata = 380) {
+    intensita *= 0.4; // lampi più morbidi: non devono sbiancare la scena
     const l = S.luciFlash[indiceLuce];
     indiceLuce = (indiceLuce + 1) % S.luciFlash.length;
     l.color.setHex(colore);
@@ -337,7 +338,7 @@ export const FX = {
     FX.lampo(pos, 0xff5a3c, 35, 420);
     scuoti(0.16);
     FX.scritta(pos, '💀', { emoji: true, size: 130, altezza: 0.75, sali: 1.4, durata: 1100 });
-    if (Math.random() < 0.35) FX.scritta(pos.clone().add(new THREE.Vector3(0.6, 0.2, 0)), 'RIP', { fondo: 'scoppio', size: 80, fill: '#1a0f24', stroke: '#fff7d0', altezza: 0.6, sali: 0.4, durata: 900, ritardo: 120 });
+    FX.scritta(pos.clone().add(new THREE.Vector3(0.55, 0.2, 0)), 'FUMATO', { fondo: 'scoppio', size: 80, fill: '#1a0f24', stroke: '#fff7d0', altezza: 0.62, sali: 0.45, durata: 1000, ritardo: 120 });
   },
 
   esplosioneEroe(pos) {
@@ -411,7 +412,7 @@ export const FX = {
       sfera.scale.setScalar(0.15 + Math.sin(e * Math.PI) * 0.06);
       if (sp) sp.position.copy(p).setY(p.y + 0.05);
       luce.position.copy(p);
-      luce.intensity = 22;
+      luce.intensity = 9;
       particelle.emetti({ pos: p, n: 4, velocita: [0.1, 0.6], colori: [colore, 0xffffff], vita: [0.25, 0.5], dim: [0.1, 0.26], gravita: 0, attrito: 2 });
     }, ease.inOut);
     luce.intensity = 0;
