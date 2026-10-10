@@ -4,31 +4,33 @@
 //  INTELLIGENZA DEL COMPUTER
 // =====================================================================
 const IA = {
-  PAUSA: 1000, // millisecondi tra una mossa e l'altra
+  PAUSA: 650, // millisecondi di "riflessione" tra una mossa e l'altra
 
   // Cambia le carte che costano più di 3 mana
   scegliMulligan(p) {
     return p.mano.filter(h => h.carta.costo > 3).map(h => h.uid);
   },
 
-  async giocaTurno() {
+  // "animato" si risolve quando la grafica ha finito di mostrare l'inizio del turno
+  async giocaTurno(animato) {
     const partita = G;
     const vivo = () => G === partita && G.fase === 'gioco' && G.turno === 1;
     const p = G.g[1];
 
+    await animato;
     await pausa(IA.PAUSA);
 
     for (let giri = 0; giri < 20 && vivo(); giri++) {
       const mossa = IA.miglioreCarta();
       if (!mossa || !giocaCarta(1, mossa.uid, mossa.bersaglio)) break;
-      Eventi.suCambio();
-      await pausa(IA.PAUSA * 1.4);
+      await Eventi.suCambio();
+      await pausa(IA.PAUSA);
     }
 
     if (vivo() && puoUsarePotere(1)) {
       const b = IA.bersaglioPotere();
       if (b && usaPotere(1, b.uid)) {
-        Eventi.suCambio();
+        await Eventi.suCambio();
         await pausa(IA.PAUSA);
       }
     }
@@ -36,8 +38,8 @@ const IA = {
     for (let giri = 0; giri < 30 && vivo(); giri++) {
       const m = p.campo.find(puoAttaccareOra);
       if (!m || !attacca(1, m.uid, IA.bersaglioAttacco(m))) break;
-      Eventi.suCambio();
-      await pausa(IA.PAUSA);
+      await Eventi.suCambio();
+      await pausa(IA.PAUSA * 0.6);
     }
 
     if (vivo()) fineTurno();

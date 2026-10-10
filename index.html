@@ -2,46 +2,47 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0716">
   <title>Memestone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="stile.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
+  <div id="scena"></div>
+
   <header class="barra">
     <h1>Memestone</h1>
     <nav>
-      <button data-azione="regole">❓ Regole</button>
-      <button data-azione="collezione">📚 Carte</button>
-      <button data-azione="nuova">🔄 Nuova</button>
+      <button data-azione="regole" title="Regole">❓</button>
+      <button data-azione="collezione" title="Tutte le carte">📚</button>
+      <button data-azione="cronologia" title="Cronologia">📜</button>
+      <button data-azione="impostazioni" title="Grafica">⚙️</button>
+      <button data-azione="nuova" title="Nuova partita">🔄</button>
     </nav>
   </header>
 
-  <main class="tavolo">
-    <section class="lato nemico">
-      <div id="info-nemico"></div>
-      <div id="campo-nemico" class="campo"></div>
-    </section>
+  <div id="stato" class="stato"></div>
+  <div id="banner" class="banner" hidden></div>
+  <div id="anteprima" class="anteprima" hidden></div>
 
-    <div class="centro">
-      <div id="stato"></div>
-      <div class="bottoni-centro">
-        <button id="annulla" data-azione="annulla" hidden>Annulla</button>
-        <button id="fine-turno" data-azione="fine">Fine turno</button>
-      </div>
-    </div>
+  <div id="caricamento" class="caricamento">
+    <div class="logo">Memestone</div>
+    <div class="rotella"></div>
+    <div class="sotto">Preparo il tavolo…</div>
+  </div>
 
-    <section class="lato mio">
-      <div id="campo-mio" class="campo"></div>
-      <div id="info-mio"></div>
-    </section>
-
-    <div id="mano" class="mano"></div>
-    <div id="log" class="log"></div>
-  </main>
-
-  <div id="annuncio" class="annuncio" hidden></div>
-
-  <div id="finestra-mulligan" class="finestra" hidden>
+  <div id="finestra-mulligan" class="finestra obbligatoria" hidden>
     <div class="riquadro largo">
       <h2 id="mulligan-titolo"></h2>
       <p>Tocca le carte che vuoi <b>cambiare</b>, poi conferma.</p>
@@ -50,7 +51,7 @@
     </div>
   </div>
 
-  <div id="finestra-fine" class="finestra" hidden>
+  <div id="finestra-fine" class="finestra obbligatoria" hidden>
     <div class="riquadro">
       <h2 id="fine-titolo"></h2>
       <p id="fine-testo"></p>
@@ -58,7 +59,7 @@
     </div>
   </div>
 
-  <div id="finestra-collezione" class="finestra chiudibile" hidden>
+  <div id="finestra-collezione" class="finestra" hidden>
     <div class="riquadro largo">
       <button class="chiudi" data-azione="chiudi">✕</button>
       <h2>📚 Tutte le carte</h2>
@@ -66,28 +67,46 @@
     </div>
   </div>
 
-  <div id="finestra-dettaglio" class="finestra chiudibile" hidden>
+  <div id="finestra-dettaglio" class="finestra" hidden>
     <div class="riquadro stretto">
       <button class="chiudi" data-azione="chiudi">✕</button>
       <div id="dettaglio" class="dettaglio"></div>
     </div>
   </div>
 
-  <div id="finestra-regole" class="finestra chiudibile" hidden>
+  <div id="finestra-cronologia" class="finestra" hidden>
+    <div class="riquadro">
+      <button class="chiudi" data-azione="chiudi">✕</button>
+      <h2>📜 Cosa è successo</h2>
+      <ul id="cronologia" class="cronologia"></ul>
+    </div>
+  </div>
+
+  <div id="finestra-impostazioni" class="finestra" hidden>
+    <div class="riquadro">
+      <button class="chiudi" data-azione="chiudi">✕</button>
+      <h2>⚙️ Grafica</h2>
+      <p class="nota">Con "Automatica" il gioco abbassa la qualità da solo se il dispositivo rallenta.</p>
+      <div id="opzioni-qualita" class="opzioni"></div>
+      <p id="fps" class="nota"></p>
+    </div>
+  </div>
+
+  <div id="finestra-regole" class="finestra" hidden>
     <div class="riquadro">
       <button class="chiudi" data-azione="chiudi">✕</button>
       <h2>❓ Come si gioca</h2>
       <ul class="regole">
         <li>Vince chi porta a <b>0</b> la vita dell'eroe avversario. Si parte da 30.</li>
-        <li>Si lancia una moneta per decidere chi inizia. Chi inizia pesca 3 carte, l'altro 4 più <b>La Moneta</b> 🪙.</li>
+        <li>Una moneta decide chi inizia. Chi inizia pesca 3 carte, l'altro 4 più <b>La Moneta</b> 🪙.</li>
         <li>All'inizio puoi <b>cambiare</b> le carte che non ti piacciono.</li>
         <li>Ogni turno ricevi un <b>cristallo di mana</b> 💎 in più (massimo 10) e peschi una carta.</li>
-        <li><b>Tocca una carta</b> per giocarla. Se serve un bersaglio, tocca poi chi vuoi colpire.</li>
-        <li>I <b>personaggi</b> restano sul campo e dal turno dopo possono attaccare: tocca il tuo personaggio che brilla, poi il nemico. Negli scontri si fanno danni a vicenda.</li>
+        <li><b>Trascina una carta</b> sul tavolo per giocarla (o toccala due volte). Se serve un bersaglio, appare una freccia: portala sul bersaglio.</li>
+        <li>I <b>personaggi</b> possono attaccare dal turno dopo: <b>trascinali</b> sul nemico (o toccali e poi tocca il nemico).</li>
         <li>Gli <b>eventi</b> si usano una volta. Le <b>trappole</b> restano nascoste e scattano da sole nel turno avversario.</li>
-        <li>Il <b>Potere Eroe</b> 🗯️ (vicino al tuo eroe) costa 2 mana e si usa una volta per turno.</li>
+        <li>Il <b>Potere Eroe</b> 🗯️ (la moneta vicino al tuo eroe) costa 2 mana e si usa una volta per turno.</li>
         <li>Massimo 7 personaggi sul campo e 10 carte in mano.</li>
-        <li>Tocca un personaggio sul campo per leggerne la carta.</li>
+        <li>Tocca un personaggio per leggere la sua carta (col mouse basta passarci sopra).</li>
       </ul>
       <h3>Abilità</h3>
       <ul id="glossario" class="regole"></ul>
@@ -95,12 +114,14 @@
     </div>
   </div>
 
+  <!-- Carte e regole (script classici) -->
   <script src="carte/esempio.js"></script>
   <script src="carte/personaggi.js"></script>
   <script src="carte/eventi.js"></script>
   <script src="carte/trappole.js"></script>
   <script src="js/regole.js"></script>
   <script src="js/computer.js"></script>
-  <script src="js/schermo.js"></script>
+  <!-- Grafica 3D -->
+  <script type="module" src="js/3d/main.js"></script>
 </body>
 </html>

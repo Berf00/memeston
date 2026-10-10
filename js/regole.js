@@ -70,6 +70,7 @@ const BERSAGLIO_PREDEFINITO = {
 };
 
 const EFFETTI_DANNOSI = ['danno', 'distruggi', 'congela', 'silenzia'];
+const EFFETTI_CON_BERSAGLIO = ['danno', 'cura', 'distruggi', 'potenzia', 'congela', 'silenzia', 'dona'];
 
 // ---------- Carte ----------
 for (const c of CARTE_ESEMPIO) c.esempio = true;
@@ -101,15 +102,16 @@ function mescola(arr) {
   return arr;
 }
 
-// L'interfaccia si aggancia qui per sapere quando ridisegnare
-const Eventi = { suCambio() {}, suAnnuncio() {}, suFine() {} };
+// La grafica si aggancia qui: suCambio() anima gli eventi e restituisce una Promise
+const Eventi = { suCambio() { return Promise.resolve(); } };
 
 function log(msg) {
   G.log.unshift(msg);
-  if (G.log.length > 10) G.log.length = 10;
+  if (G.log.length > 40) G.log.length = 40;
 }
 
-function segna(x, testo, tipo) { G.segni.push({ uid: x.uid, testo, tipo }); }
+// Ogni cosa che succede viene registrata: la grafica la anima nello stesso ordine
+function anima(ev) { if (G && G.registra) G.anim.push(ev); }
 
 function nomeDi(x) {
   if (x.eroe) return x.lato === 0 ? 'te' : 'il computer';
@@ -153,7 +155,7 @@ function nuovaPartita() {
     g: [creaGiocatore(0, 'Tu', '😎'), creaGiocatore(1, 'Computer', '🤖')],
     fase: 'mulligan', turno: -1, numeroTurno: 0,
     primo: Math.random() < 0.5 ? 0 : 1,
-    vincitore: null, log: [], segni: []
+    vincitore: null, log: [], anim: [], registra: false
   };
   const primo = G.g[G.primo], secondo = G.g[1 - G.primo];
   for (let k = 0; k < REGOLE.MANO_PRIMO; k++) pesca(primo);
@@ -177,6 +179,7 @@ function iniziaPartita() {
   const secondo = G.g[1 - G.primo];
   secondo.mano.push({ uid: nuovoUid(), carta: LA_MONETA });
   G.fase = 'gioco';
+  G.registra = true;
   iniziaTurno(G.primo);
 }
 
@@ -190,10 +193,11 @@ function iniziaTurno(i) {
   p.potereUsato = false;
   for (const m of p.campo) { m.dorme = false; m.attacchiFatti = 0; }
   log(chi(i, '— Il tuo turno —', '— Turno del computer —'));
+  anima({ tipo: 'turno', lato: i });
   pesca(p);
   controllaFine();
-  Eventi.suCambio();
-  if (G.fase === 'gioco' && i === 1) IA.giocaTurno();
+  const animato = Eventi.suCambio();
+  if (G.fase === 'gioco' && i === 1) IA.giocaTurno(animato);
 }
 
 function fineTurno() {
@@ -222,9 +226,12 @@ function pesca(p) {
   const carta = p.mazzo.pop();
   if (p.mano.length >= REGOLE.MAX_MANO) {
     log(`Mano piena: "${carta.nome}" è bruciata!`);
+    anima({ tipo: 'brucia', lato: p.lato, carta });
     return;
   }
-  p.mano.push({ uid: nuovoUid(), carta });
+  const h = { uid: nuovoUid(), carta };
+  p.mano.push(h);
+  anima({ tipo: 'pesca', lato: p.lato, uid: h.uid });
 }
 
 // ---------- Giocare le carte ----------
@@ -284,6 +291,7 @@ function evoca(i, c) {
   if (!c || p.campo.length >= REGOLE.MAX_CAMPO) return null;
   const m = creaServitore(c, i);
   p.campo.push(m);
+  anima({ tipo: 'evoca', lato: i, m });
   return m;
 }
 
@@ -305,25 +313,24 @@ function giocaCarta(i, uid, uidBersaglio) {
 
   p.mano.splice(idx, 1);
   p.mana -= c.costo;
+  anima({ tipo: 'gioca', lato: i, uidMano: uid, carta: c });
 
   if (c.tipo === 'servitore') {
-    if (i === 1) Eventi.suAnnuncio(c, 'Il computer gioca');
     const m = creaServitore(c, i);
     p.campo.push(m);
+    anima({ tipo: 'evoca', lato: i, m });
     log(`${chi(i, 'Giochi', 'Il computer gioca')} ${c.nome}.`);
     if (c.grido) applica(i, c.grido, { fonte: m, bersaglio });
     rimuoviMorti();
     if (p.campo.includes(m)) attivaTrappole(1 - i, 'servitoreGiocato', { servitoreGiocato: m });
   } else if (c.tipo === 'magia') {
-    if (i === 1) Eventi.suAnnuncio(c, 'Il computer lancia');
     log(`${chi(i, 'Lanci', 'Il computer lancia')} ${c.nome}.`);
-    const ctx = { bersaglio, magia: true };
+    const ctx = { bersaglio, magia: true, carta: c };
     attivaTrappole(1 - i, 'magiaLanciata', ctx);
     if (ctx.annullato) log(`${c.nome} è stata annullata!`);
     else applica(i, c.effetto, ctx);
   } else if (c.tipo === 'trappola') {
     p.segreti.push(c);
-    if (i === 1) Eventi.suAnnuncio(null, 'Il computer piazza una trappola…');
     log(chi(i, `Piazzi la trappola ${c.nome}.`, 'Il computer piazza una trappola…'));
   }
 
@@ -351,7 +358,8 @@ function usaPotere(i, uidBersaglio) {
   p.mana -= POTERE_EROE.costo;
   p.potereUsato = true;
   log(`${chi(i, 'Usi', 'Il computer usa')} ${POTERE_EROE.nome}${bersaglio ? ' su ' + nomeDi(bersaglio) : ''}.`);
-  applica(i, POTERE_EROE.effetto, { bersaglio });
+  anima({ tipo: 'potere', lato: i });
+  applica(i, POTERE_EROE.effetto, { bersaglio, carta: POTERE_EROE });
   rimuoviMorti();
   controllaFine();
   return true;
@@ -397,6 +405,7 @@ function attacca(i, uidAttaccante, uidBersaglio) {
   if (!p.campo.includes(a) || !bersaglioVivo) { controllaFine(); return true; }
 
   const dannoA = a.attacco, dannoB = b.eroe ? 0 : b.attacco;
+  anima({ tipo: 'attacco', da: a.uid, a: b.uid, forza: dannoA });
   infliggi(a, b, dannoA);
   if (dannoB > 0) infliggi(b, a, dannoB);
   rimuoviMorti();
@@ -409,7 +418,7 @@ function infliggi(fonte, b, v) {
   if (!b || v <= 0) return 0;
   if (!b.eroe && ha(b, 'scudoDivino')) {
     b.abilita.delete('scudoDivino');
-    segna(b, 'Scudo!', 'scudo');
+    anima({ tipo: 'scudo', uid: b.uid });
     return 0;
   }
   if (b.eroe) {
@@ -419,7 +428,7 @@ function infliggi(fonte, b, v) {
   } else {
     b.vita -= v;
   }
-  segna(b, '-' + v, 'danno');
+  anima({ tipo: 'danno', uid: b.uid, valore: v, vita: b.vita, armatura: b.armatura || 0 });
   if (fonte && !fonte.eroe && !b.eroe && ha(fonte, 'velenoso')) b.distrutto = true;
   if (fonte && !fonte.eroe && ha(fonte, 'furtoVitale')) cura(G.g[fonte.lato].eroe, v);
   return v;
@@ -428,7 +437,7 @@ function infliggi(fonte, b, v) {
 function cura(x, v) {
   const prima = x.vita;
   x.vita = Math.min(x.vitaMax, x.vita + v);
-  if (x.vita > prima) segna(x, '+' + (x.vita - prima), 'cura');
+  if (x.vita > prima) anima({ tipo: 'cura', uid: x.uid, valore: x.vita - prima, vita: x.vita });
 }
 
 function rimuoviMorti() {
@@ -442,6 +451,7 @@ function rimuoviMorti() {
       p.campo = p.campo.filter(m => !morti.includes(m));
       for (const m of morti) {
         log(`${m.carta.nome} è stato eliminato.`);
+        anima({ tipo: 'morte', uid: m.uid });
         if (m.carta.rantolo && !m.silenziato) applica(p.lato, m.carta.rantolo, { fonte: m });
         attivaTrappole(p.lato, 'servitoreMorto', { servitoreMorto: m });
       }
@@ -455,7 +465,7 @@ function controllaFine() {
   if (a.eroe.vita > 0 && b.eroe.vita > 0) return;
   G.fase = 'finita';
   G.vincitore = a.eroe.vita <= 0 && b.eroe.vita <= 0 ? -1 : a.eroe.vita <= 0 ? 1 : 0;
-  Eventi.suFine();
+  anima({ tipo: 'fine', vincitore: G.vincitore });
 }
 
 // ---------- Trappole ----------
@@ -467,8 +477,11 @@ function attivaTrappole(i, evento, ctx) {
     if (t.attivazione !== evento) continue;
     p.segreti = p.segreti.filter(s => s !== t);
     log(`Trappola! ${t.nome}`);
-    Eventi.suAnnuncio(t, 'Trappola attivata!');
+    anima({ tipo: 'trappola', lato: i, carta: t });
+    const cartaPrima = ctx.carta;
+    ctx.carta = t;
     applica(i, t.effetto, ctx);
+    ctx.carta = cartaPrima;
   }
 }
 
@@ -506,37 +519,49 @@ function applica(i, effetti, ctx) {
   const me = G.g[i];
   for (const e of comeLista(effetti)) {
     const v = e.valore || 0;
-    const bersagli = () => risolviBersagli(i, bersaglioDi(e), ctx);
+    const bersagli = risolviBersagli(i, bersaglioDi(e), ctx);
+
+    // Il "colpo" che parte dalla carta (o dall'eroe) verso i bersagli
+    const soloSeStesso = bersagli.length === 1 && bersagli[0] === ctx.fonte;
+    if (EFFETTI_CON_BERSAGLIO.includes(e.tipo) && bersagli.length && !soloSeStesso) {
+      anima({
+        tipo: 'proiettile', lato: i, effetto: e.tipo,
+        da: ctx.fonte ? ctx.fonte.uid : me.eroe.uid,
+        a: bersagli.map(x => x.uid),
+        emoji: ctx.carta?.emoji || ctx.fonte?.carta?.emoji || '✨'
+      });
+    }
+
     switch (e.tipo) {
       case 'danno': {
         const totale = v + (ctx.magia ? dannoMagico(i) : 0);
-        for (const b of bersagli()) infliggi(ctx.fonte || null, b, totale);
+        for (const b of bersagli) infliggi(ctx.fonte || null, b, totale);
         break;
       }
       case 'cura':
-        for (const b of bersagli()) cura(b, v);
+        for (const b of bersagli) cura(b, v);
         break;
       case 'distruggi':
-        for (const b of bersagli()) if (!b.eroe) { b.distrutto = true; segna(b, '💀', 'danno'); }
+        for (const b of bersagli) if (!b.eroe) b.distrutto = true;
         break;
       case 'potenzia':
-        for (const b of bersagli()) {
+        for (const b of bersagli) {
           if (b.eroe) continue;
           b.attacco += e.attacco || 0;
           b.vita += e.vita || 0;
           b.vitaMax += e.vita || 0;
-          segna(b, `+${e.attacco || 0}/+${e.vita || 0}`, 'cura');
+          anima({ tipo: 'potenzia', uid: b.uid, attacco: b.attacco, vita: b.vita, testo: `+${e.attacco || 0}/+${e.vita || 0}` });
         }
         break;
       case 'congela':
-        for (const b of bersagli()) {
+        for (const b of bersagli) {
           b.congelato = true;
           b.congelatoNelTurno = G.numeroTurno;
-          segna(b, '❄️', 'gelo');
+          anima({ tipo: 'congela', uid: b.uid });
         }
         break;
       case 'silenzia':
-        for (const b of bersagli()) {
+        for (const b of bersagli) {
           if (b.eroe) continue;
           b.abilita.clear();
           b.silenziato = true;
@@ -544,18 +569,18 @@ function applica(i, effetti, ctx) {
           b.attacco = b.carta.attacco;
           b.vitaMax = b.carta.vita;
           b.vita = Math.min(b.vita, b.vitaMax);
-          segna(b, 'Silenzio', 'gelo');
+          anima({ tipo: 'silenzia', uid: b.uid });
         }
         break;
       case 'dona':
-        for (const b of bersagli()) if (!b.eroe) for (const a of comeLista(e.abilita)) b.abilita.add(a);
+        for (const b of bersagli) if (!b.eroe) for (const a of comeLista(e.abilita)) b.abilita.add(a);
         break;
       case 'pesca':
         for (let k = 0; k < (v || 1); k++) pesca(me);
         break;
       case 'armatura':
         me.eroe.armatura += v;
-        segna(me.eroe, `+${v} 🛡️`, 'cura');
+        anima({ tipo: 'armatura', uid: me.eroe.uid, valore: v, armatura: me.eroe.armatura });
         break;
       case 'mana':
         me.mana = Math.min(REGOLE.MANA_MAX, me.mana + v);
