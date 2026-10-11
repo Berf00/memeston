@@ -106,7 +106,10 @@ export function aggiorna() {
   return catena;
 }
 
-const GRUPPI = { danno: 'colpi', cura: 'colpi', scudo: 'colpi', congela: 'colpi', silenzia: 'colpi', potenzia: 'colpi', armatura: 'colpi', morte: 'morti' };
+const GRUPPI = {
+  danno: 'colpi', cura: 'colpi', scudo: 'colpi', congela: 'colpi', silenzia: 'colpi', potenzia: 'colpi',
+  armatura: 'colpi', indebolisci: 'colpi', dona: 'colpi', morte: 'morti'
+};
 
 async function riproduci() {
   const partita = G;
@@ -127,6 +130,13 @@ async function riproduci() {
   if (G !== partita) return;
   T.animando = false;
   sincronizza();
+  // Scelta in sospeso (es. "Busso": quale carta scartare)
+  if (G.scelta && G.scelta.lato === 0 && !UI.sceltaAperta()) {
+    const carte = G.g[0].mano.filter(h => G.scelta.uids.includes(h.uid));
+    UI.mostraScelta('🚪 Busso: quale carta scarti?', carte, uid => {
+      if (risolviScelta(0, uid)) aggiorna();
+    });
+  }
 }
 
 function esegui(ev) {
@@ -660,6 +670,161 @@ const ANIMAZIONI = {
     await attendi(1000);
     await tween(300, k => { c.impostaOpacita(1 - k); c.gruppo.scale.multiplyScalar(1.01); });
     rimuoviCarta(c);
+  },
+
+  // ----- Meccaniche del Campo dell'Oro -----
+  async galera(ev) {
+    const tok = T.token.get(ev.uid);
+    if (!tok) return;
+    await attendi(150);
+    tok.setGalera(true, true);
+    suona('galera');
+    FX.scritta(tok.posizione(), 'IN GALERA! 🚔', { size: 80, fill: '#cfd6e6', altezza: 0.55, sali: 0.7 });
+    await attendi(500);
+  },
+
+  async comeback(ev) {
+    const tok = T.token.get(ev.uid);
+    if (!tok) return;
+    tok.setGalera(false);
+    const p = tok.posizione();
+    suona('comeback');
+    FX.impatto(p, { forza: 1.4 });
+    FX.scritta(p, 'COMEBACK!', { fondo: 'scoppio', size: 90, fill: '#1a0f24', stroke: '#fff7d0', altezza: 0.8, sali: 0.6, durata: 1100 });
+    await attendi(700);
+  },
+
+  async fusione(ev) {
+    const membri = ev.da.map(uid => T.token.get(uid)).filter(Boolean);
+    const centro = new THREE.Vector3();
+    membri.forEach(t => centro.add(t.gruppo.position));
+    if (membri.length) centro.divideScalar(membri.length);
+    centro.y = 0.9;
+    suona('fusione');
+    FX.scritta(centro, 'FUSIONE!', { fondo: 'scoppio', size: 100, fill: '#1a0f24', stroke: '#fff7d0', altezza: 0.95, sali: 0.5, durata: 1300 });
+    // I tre volano al centro e si fondono
+    await Promise.all(membri.map(t => {
+      t.molla = false;
+      const da = t.gruppo.position.clone(), s = t.gruppo.scale.x;
+      return tween(480, e => {
+        t.gruppo.position.lerpVectors(da, centro, e);
+        t.gruppo.scale.setScalar(s * (1 - 0.6 * e));
+        t.gruppo.rotation.y = e * PI * 2;
+      }, ease.in);
+    }));
+    for (const t of membri) {
+      T.token.delete(t.uid);
+      S.interattivi.delete(t.gruppo);
+      T.ordine[t.lato] = T.ordine[t.lato].filter(x => x !== t);
+      t.distruggi();
+    }
+    FX.esplosioneEroe(centro);
+    await ANIMAZIONI.evoca({ lato: ev.lato, m: ev.m });
+  },
+
+  async sacrificio(ev) {
+    const tok = T.token.get(ev.uid);
+    if (!tok) return;
+    T.token.delete(ev.uid);
+    S.interattivi.delete(tok.gruppo);
+    T.ordine[tok.lato] = T.ordine[tok.lato].filter(x => x !== tok);
+    tok.molla = false;
+    const da = tok.gruppo.position.clone();
+    FX.dorato(tok.posizione(), '⚜️');
+    await tween(520, e => {
+      tok.gruppo.position.set(da.x, da.y + e * 2.2, da.z);
+      tok.matRitratto.emissive.setRGB(e, e * 0.8, e * 0.3);
+      tok.gruppo.scale.setScalar(tok.scalaTarget * (1 - e * 0.7));
+    }, ease.in);
+    FX.dissolvi(tok.gruppo.position.clone(), 0xffd34d);
+    tok.distruggi();
+    layoutCampo(tok.lato);
+  },
+
+  async scarta(ev) {
+    const colore = ev.bandito ? 0xb04bff : 0xff6a2a;
+    let c;
+    if (ev.lato === 0) {
+      c = T.carte.get(ev.uid);
+      if (c) {
+        T.carte.delete(ev.uid);
+        T.mano = T.mano.filter(x => x !== c);
+        S.interattivi.delete(c.gruppo);
+        layoutMano();
+        S.scene.attach(c.gruppo);
+      }
+    } else {
+      const r = T.retri.get(ev.uid);
+      if (r) {
+        T.retri.delete(ev.uid);
+        T.retriOrdine = T.retriOrdine.filter(x => x !== r);
+        layoutRetri();
+        // L'avversario vede la carta scartata
+        c = new Carta3D(ev.carta);
+        T.vive.add(c);
+        c.gruppo.position.copy(r.gruppo.position);
+        c.gruppo.quaternion.copy(S.camera.quaternion);
+        c.gruppo.scale.setScalar(0.6);
+        S.scene.add(c.gruppo);
+        rimuoviCarta(r);
+      }
+    }
+    if (!c) return;
+    c.molla = false;
+    const su = c.gruppo.position.clone().add(v3(0, 1.2, 0));
+    await tweenTrasforma(c.gruppo, { pos: su, quat: S.camera.quaternion.clone(), scala: 0.9 }, 320, ease.out);
+    FX.dissolvi(su, colore);
+    suona('morte');
+    FX.scritta(su, ev.bandito ? 'BANDITA' : 'SCARTATA', { size: 70, fill: ev.bandito ? '#e0b8ff' : '#ffc9a8', altezza: 0.45, sali: 0.5 });
+    await tween(380, e => { c.impostaOpacita(1 - e); c.gruppo.scale.setScalar(0.9 + e * 0.3); });
+    rimuoviCarta(c);
+  },
+
+  async indebolisci(ev) {
+    const tok = T.token.get(ev.uid);
+    if (!tok) return;
+    tok.mostraAttacco(ev.attacco, 'giu');
+    const p = tok.posizione();
+    FX.particelle({ pos: p, n: 30, velocita: [0.4, 1.5], colori: [0x6a2a8a, 0x2a1040, 0xff4a3c], vita: [0.5, 1], dim: [0.12, 0.26], gravita: -1, attrito: 1.5 });
+    FX.scritta(p, ev.testo, { size: 80, fill: '#ff8a7a', altezza: 0.45, sali: 0.6 });
+    suona('silenzio');
+    await attendi(400);
+  },
+
+  async dona(ev) {
+    const tok = T.token.get(ev.uid);
+    if (!tok) return;
+    FX.dorato(tok.posizione(), ev.testo);
+    suona('potenzia');
+    await attendi(450);
+  },
+
+  async statoEroe(ev) {
+    const e = T.eroi[ev.lato];
+    FX.dorato(e.posizione(), ev.testo);
+    suona('potere');
+    await attendi(600);
+  },
+
+  async terreno(ev) {
+    const e = T.eroi[ev.lato];
+    e.setTerreno(ev.carta);
+    const centro = v3(0, 0.05, Z.campo[ev.lato]);
+    suona('fusione');
+    FX.onda(centro, 0xffd34d, 6, 900, 1.2);
+    FX.onda(centro, 0xffffff, 4, 600);
+    FX.scritta(centro, `${ev.carta.emoji} ${ev.carta.nome.toUpperCase()}`, { size: 100, fill: '#ffe08a', altezza: 0.8, sali: 0.8, durata: 1300 });
+    await attendi(900);
+  },
+
+  async simbolo(ev) {
+    UI.bannerSpeciale(`⚜️ ${ev.carta.nome} ⚜️`, 'simbolo');
+    suona('simbolo');
+    const p = T.eroi[ev.lato].posizione();
+    FX.esplosioneEroe(p);
+    FX.onda(p, 0xffd34d, 8, 1200, 1.4);
+    T.eroi[ev.lato].aggiornaStati(G.g[ev.lato]);
+    await attendi(1500);
   },
 
   async fine(ev) {

@@ -18,6 +18,7 @@ export function testoCarta(c) {
   const ab = (c.abilita || []).map(a => `<b>${esc(ABILITA[a]?.nome || a)}</b>`);
   if (ab.length) righe.push(ab.join(', '));
   if (c.dannoMagico) righe.push(`<b>Danni Magici +${c.dannoMagico}</b>`);
+  for (const [grassetto, normale] of righeSpeciali(c)) righe.push(`<b>${esc(grassetto)}</b>${esc(normale)}`);
   if (c.grido) righe.push(`<b>Grido di Battaglia:</b> ${esc(descrivi(c.grido))}`);
   if (c.rantolo) righe.push(`<b>Rantolo di Morte:</b> ${esc(descrivi(c.rantolo))}`);
   if (c.fineTurno) righe.push(`<b>Alla fine del tuo turno:</b> ${esc(descrivi(c.fineTurno))}`);
@@ -26,7 +27,6 @@ export function testoCarta(c) {
   return righe.join('<br>');
 }
 
-const ETICHETTE = { servitore: 'PERSONAGGIO', magia: 'EVENTO', trappola: 'TRAPPOLA' };
 
 export function cartaHTML(c, { uid, classi = '', conFrase = false, azione = '' } = {}) {
   const arte = c.immagine
@@ -35,13 +35,14 @@ export function cartaHTML(c, { uid, classi = '', conFrase = false, azione = '' }
   return `
     <div class="carta tipo-${c.tipo} ${classi}" ${azione ? `data-azione="${azione}"` : ''} ${uid ? `data-uid="${uid}"` : ''}>
       <div class="costo">${c.costo}</div>
+      ${c.stelle ? `<div class="stelle">${'★'.repeat(c.stelle)}</div>` : ''}
       ${c.esempio ? '<div class="nastro-esempio">ESEMPIO</div>' : ''}
       <div class="arte">${arte}</div>
       <div class="nome">${esc(c.nome)}</div>
       ${c.sottotitolo ? `<div class="sottotitolo">${esc(c.sottotitolo)}</div>` : ''}
       <div class="testo">${testoCarta(c)}</div>
       ${conFrase && c.frase ? `<div class="frase">“${esc(c.frase)}”</div>` : ''}
-      <div class="etichetta">${ETICHETTE[c.tipo] || ''}</div>
+      <div class="etichetta">${esc(etichettaTipo(c))}</div>
       ${c.tipo === 'servitore' ? `<div class="stat"><span class="atk">${c.attacco}</span><span class="hp">${c.vita}</span></div>` : ''}
     </div>`;
 }
@@ -51,7 +52,16 @@ function apri(sel) { $(sel).hidden = false; }
 export function chiudiFinestre() { document.querySelectorAll('.finestra:not(.obbligatoria)').forEach(f => (f.hidden = true)); }
 export function finestraAperta() { return [...document.querySelectorAll('.finestra')].some(f => !f.hidden); }
 
-let callbackMulligan = null, callbackNuova = null;
+let callbackMulligan = null, callbackNuova = null, callbackScelta = null;
+
+// Scelta di una carta tra alcune (es. "Busso": quale scartare)
+export function mostraScelta(titolo, carte, suScelta) {
+  callbackScelta = suScelta;
+  $('#scelta-titolo').textContent = titolo;
+  $('#scelta-carte').innerHTML = carte.map(h => cartaHTML(h.carta, { uid: h.uid, azione: 'scelta-carta', classi: 'tenuta' })).join('');
+  apri('#finestra-scelta');
+}
+export function sceltaAperta() { return !$('#finestra-scelta').hidden; }
 const daCambiare = new Set();
 
 export function init({ suNuova }) {
@@ -71,6 +81,14 @@ export function init({ suNuova }) {
         const uid = Number(el.dataset.uid);
         if (daCambiare.has(uid)) daCambiare.delete(uid); else daCambiare.add(uid);
         disegnaMulligan();
+        break;
+      }
+      case 'scelta-carta': {
+        const uid = Number(el.dataset.uid);
+        $('#finestra-scelta').hidden = true;
+        const cb = callbackScelta;
+        callbackScelta = null;
+        if (cb) cb(uid);
         break;
       }
       case 'conferma-mulligan': {
@@ -150,14 +168,18 @@ export function mostraFine(vincitore) {
 
 export function mostraCollezione() {
   const gruppi = [['🧑 Personaggi', 'servitore'], ['📅 Eventi', 'magia'], ['🪤 Trappole', 'trappola']];
-  const nostre = TUTTE_LE_CARTE.filter(c => !c.esempio);
   const esempi = TUTTE_LE_CARTE.filter(c => c.esempio && !c.token);
   const sezione = (titolo, carte) => carte.length
     ? `<h3>${titolo}</h3><div class="griglia">${carte.map(c => cartaHTML(c, { conFrase: true })).join('')}</div>` : '';
   let html = '';
-  for (const [titolo, tipo] of gruppi) html += sezione(titolo, nostre.filter(c => c.tipo === tipo));
-  if (!nostre.length) html += '<p class="nota">Le vostre carte non ci sono ancora: arriveranno presto! 😄</p>';
-  html += '<h2 class="separatore">Carte di esempio</h2><p class="nota">Riempiono il mazzo finché le vostre carte non bastano.</p>';
+  for (const esp of ESPANSIONI) {
+    const carte = CARTE_NOSTRE.filter(c => c.espansione === esp.nome && !c.token);
+    const totale = carte.reduce((s, c) => s + (c.copie || REGOLE.COPIE_PREDEFINITE), 0);
+    html += `<h2 class="espansione">✨ ${esc(esp.nome)}</h2><p class="nota">Mazzo di ${esc(esp.autore)} · ${totale} carte</p>`;
+    for (const [titolo, tipo] of gruppi) html += sezione(titolo, carte.filter(c => c.tipo === tipo));
+  }
+  if (!ESPANSIONI.length) html += '<p class="nota">Le vostre carte non ci sono ancora: arriveranno presto! 😄</p>';
+  html += '<h2 class="separatore">Carte di esempio</h2><p class="nota">Non sono nel mazzo: servono solo a riempirlo quando le vostre carte non bastano.</p>';
   for (const [titolo, tipo] of gruppi) html += sezione(titolo, esempi.filter(c => c.tipo === tipo));
   $('#griglia-collezione').innerHTML = html;
   apri('#finestra-collezione');
@@ -231,10 +253,12 @@ export function banner(lato) {
   b._t = setTimeout(() => { b.hidden = true; }, lato === 0 ? 1500 : 1000);
 }
 
-export function bannerTrappola() {
+export function bannerTrappola() { bannerSpeciale('TRAPPOLA!', 'trappola'); }
+
+export function bannerSpeciale(testo, classe) {
   const b = $('#banner');
-  b.className = 'banner trappola';
-  b.innerHTML = '<div class="banner-testo">TRAPPOLA!</div>';
+  b.className = 'banner ' + classe;
+  b.innerHTML = `<div class="banner-testo">${esc(testo)}</div>`;
   b.hidden = false;
   b.style.animation = 'none';
   void b.offsetWidth;

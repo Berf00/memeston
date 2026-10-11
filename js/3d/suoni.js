@@ -160,6 +160,28 @@ const EFFETTI = {
     tono({ f: 300, f2: 70, tipo: 'sawtooth', dur: 0.55, vol: 0.12, filtro: 900 });
     tono({ f: 180, f2: 50, tipo: 'sine', dur: 0.4, vol: 0.35 });
   },
+  // Sbarre della galera che sbattono
+  galera() {
+    tono({ f: 520, f2: 480, tipo: 'square', dur: 0.25, vol: 0.07, filtro: 2400 });
+    tono({ f: 780, f2: 700, tipo: 'square', dur: 0.2, vol: 0.05, filtro: 3000, rit: 0.02 });
+    soffio({ dur: 0.18, da: 5000, a: 1500, q: 2, vol: 0.18 });
+    tono({ f: 90, f2: 50, tipo: 'sine', dur: 0.3, vol: 0.4, rit: 0.02 });
+  },
+  comeback() {
+    [[60, 0], [67, 0.08], [72, 0.16], [79, 0.24]].forEach(([n, r]) => tono({ f: nota(n), tipo: 'sawtooth', dur: 0.3, vol: 0.07, rit: r, filtro: 2500 }));
+    tono({ f: 140, f2: 45, tipo: 'sine', dur: 0.4, vol: 0.6, rit: 0.3 });
+    soffio({ dur: 0.3, da: 3000, a: 300, q: 0.5, vol: 0.3, tipo: 'lowpass', rit: 0.3 });
+  },
+  fusione() {
+    soffio({ dur: 0.7, da: 200, a: 4000, q: 1.5, vol: 0.25 });
+    [64, 68, 71, 76].forEach((n, i) => tono({ f: nota(n), tipo: 'triangle', dur: 0.8, vol: 0.07, rit: 0.45 + i * 0.03 }));
+  },
+  simbolo() {
+    [[48, 0], [55, 0], [60, 0.05], [64, 0.1], [67, 0.15], [72, 0.2]].forEach(([n, r]) =>
+      tono({ f: nota(n), tipo: 'sawtooth', dur: 1.6, vol: 0.06, rit: r, filtro: 1800 }));
+    tono({ f: 70, f2: 35, tipo: 'sine', dur: 1.2, vol: 0.6 });
+    soffio({ dur: 1.2, da: 300, a: 6000, q: 0.8, vol: 0.15 });
+  },
   esplosione() {
     tono({ f: 90, f2: 25, tipo: 'sine', dur: 1.2, vol: 0.9 });
     soffio({ dur: 1.3, da: 2500, a: 80, q: 0.4, vol: 0.6, tipo: 'lowpass' });

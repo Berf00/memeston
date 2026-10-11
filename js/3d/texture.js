@@ -90,7 +90,6 @@ const COLORI = {
   magia: ['#86b6ff', '#2f5bb5', '#132559'],
   trappola: ['#ff8cbe', '#b43471', '#561030']
 };
-const ETICHETTE = { servitore: 'PERSONAGGIO', magia: 'EVENTO', trappola: 'TRAPPOLA' };
 
 function sfumaturaOro(x, y0, y1) {
   const g = x.createLinearGradient(0, y0, 0, y1);
@@ -140,6 +139,7 @@ export function paragrafiCarta(c) {
   const ab = (c.abilita || []).map(a => ABILITA[a]?.nome || a);
   if (ab.length) P.push([{ t: ab.join(', '), b: true }]);
   if (c.dannoMagico) P.push([{ t: `Danni Magici +${c.dannoMagico}`, b: true }]);
+  for (const [grassetto, normale] of righeSpeciali(c)) P.push([{ t: grassetto, b: true }, { t: normale, b: false }]);
   if (c.grido) P.push([{ t: 'Grido di Battaglia: ', b: true }, { t: descrivi(c.grido), b: false }]);
   if (c.rantolo) P.push([{ t: 'Rantolo di Morte: ', b: true }, { t: descrivi(c.rantolo), b: false }]);
   if (c.fineTurno) P.push([{ t: 'Alla fine del tuo turno: ', b: true }, { t: descrivi(c.fineTurno), b: false }]);
@@ -366,16 +366,17 @@ function disegnaFronte(x, c, ridisegna) {
   x.stroke();
   scriviTesto(x, paragrafiCarta(c), 256, yBox + 8, 372, bh - 16);
 
-  // Etichetta del tipo
+  // Etichetta del tipo (e della famiglia/trio)
   x.font = `800 17px ${FONT_TESTO}`;
   x.textAlign = 'center';
   x.textBaseline = 'middle';
   x.fillStyle = 'rgba(255,240,210,0.9)';
-  x.fillText(ETICHETTE[c.tipo] || '', 256, 690);
+  x.fillText(etichettaTipo(c), 256, 690);
 
-  // Costo, attacco e vita
+  // Costo, stelle, attacco e vita
   gemma(x, 68, 72, 56);
   testoContorno(x, String(c.costo), 68, 76, 68);
+  for (let s = 0; s < (c.stelle || 0); s++) testoContorno(x, '★', 68, 150 + s * 40, 40, { fill: '#ffd34d', stroke: '#3a2405', spessore: 0.2 });
   if (c.tipo === 'servitore') {
     cerchioAttacco(x, 74, 644, 50);
     testoContorno(x, String(c.attacco), 74, 648, 64);

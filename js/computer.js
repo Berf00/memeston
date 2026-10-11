@@ -81,13 +81,28 @@ const IA = {
 
   utileSenzaBersaglio(c) {
     const nem = G.g[0], me = G.g[1];
+    const mieiOro = me.campo.filter(m => attivo(m) && diCampoOro(m.carta)).length;
     for (const e of comeLista(c.effetto)) {
       const b = bersaglioDi(e);
       const soloServitoriNemici = ['servitoriNemici', 'casualeServitoreNemico'].includes(b);
-      if (EFFETTI_DANNOSI.includes(e.tipo) && soloServitoriNemici && !nem.campo.length) return false;
+      if (EFFETTI_DANNOSI.includes(e.tipo) && soloServitoriNemici && !nem.campo.some(m => attivo(m) && m.attacco > 0)) return false;
       if (e.tipo === 'cura' && b === 'mioEroe' && me.eroe.vita >= me.eroe.vitaMax) return false;
+      // LUI vale la pena solo con almeno 2 personaggi da potenziare
+      if (e.tipo === 'lui' && mieiOro < 2) return false;
+      if (e.tipo === 'terreno' && me.terreno?.carta.id === c.id) return false;
+      if (e.tipo === 'bruno' && (me.bruno > 0 || !me.mano.some(h => h.carta.id === 'lui'))) return false;
+      if (e.tipo === 'busso' && me.mano.length > REGOLE.MAX_MANO - 4) return false;
     }
     return true;
+  },
+
+  // "Busso": scarta la carta meno utile tra quelle pescate (la più costosa se è fuori portata, se no la più debole)
+  sceltaScarto(uids) {
+    const me = G.g[1];
+    const carte = me.mano.filter(h => uids.includes(h.uid));
+    const lontane = carte.filter(h => h.carta.costo > me.manaMax + 3).sort((a, b) => b.carta.costo - a.carta.costo);
+    if (lontane.length) return lontane[0].uid;
+    return carte.sort((a, b) => a.carta.costo - b.carta.costo)[0].uid;
   },
 
   scegliBersaglio(c, k) {

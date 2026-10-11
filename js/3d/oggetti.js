@@ -25,7 +25,7 @@ const MAT = {
 };
 
 function matRetro() {
-  return new THREE.MeshStandardMaterial({ map: texRetro(), roughness: 0.5, metalness: 0.1, emissive: 0xffffff, emissiveMap: texRetro(), emissiveIntensity: 0.14 });
+  return new THREE.MeshStandardMaterial({ map: texRetro(), roughness: 0.5, metalness: 0.1, envMapIntensity: 0.25, emissive: 0xffffff, emissiveMap: texRetro(), emissiveIntensity: 0.14 });
 }
 const MAT_RETRO = matRetro();
 
@@ -122,7 +122,7 @@ export class Carta3D {
     const g = this.gruppo = new THREE.Group();
     if (carta) {
       const tex = texFronte(carta);
-      this.matFronte = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.42, metalness: 0.05, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.07 });
+      this.matFronte = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0, envMapIntensity: 0.12, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.12 });
     } else {
       this.matFronte = null;
     }
@@ -199,6 +199,9 @@ const geoNumero = new THREE.PlaneGeometry(0.36, 0.36).rotateX(-PI / 2);
 const geoAnello = new THREE.RingGeometry(0.6, 0.8, 64).rotateX(-PI / 2);
 const geoBolla = new THREE.SphereGeometry(1, 32, 16);
 const geoGhiaccio = new THREE.ShapeGeometry(ellisse(RX + 0.03, RY + 0.03), 40).rotateX(-PI / 2);
+const geoSbarra = new THREE.CylinderGeometry(0.025, 0.025, 0.8, 8);
+const geoAnelloSbarre = new THREE.TorusGeometry(RX + 0.06, 0.03, 8, 40).rotateX(-PI / 2);
+MAT.ferro = new THREE.MeshStandardMaterial({ color: 0x6b7080, metalness: 0.9, roughness: 0.35 });
 
 export class Token {
   constructor(m) {
@@ -209,7 +212,7 @@ export class Token {
     const c = this.corpo = new THREE.Group();
     g.add(c);
 
-    this.matRitratto = new THREE.MeshStandardMaterial({ map: texRitratto(m.carta), roughness: 0.48, metalness: 0, emissive: 0x000000 });
+    this.matRitratto = new THREE.MeshStandardMaterial({ map: texRitratto(m.carta), roughness: 0.55, metalness: 0, envMapIntensity: 0.2, emissive: 0x000000 });
     const base = new THREE.Mesh(geoBase, [this.matRitratto, MAT_ORO]);
     base.position.y = 0.04;
     base.castShadow = true;
@@ -263,6 +266,25 @@ export class Token {
     this.iconeTesto = '';
     c.add(this.icone);
 
+    // Galera: sbarre di ferro attorno al personaggio ("Sdrumato")
+    this.sbarre = new THREE.Group();
+    for (let k = 0; k < 9; k++) {
+      const a = (k / 9) * PI * 2;
+      const b = new THREE.Mesh(geoSbarra, MAT.ferro);
+      b.position.set(Math.cos(a) * (RX + 0.06), 0.4, Math.sin(a) * (RY + 0.06));
+      b.castShadow = true;
+      this.sbarre.add(b);
+    }
+    for (const y of [0.05, 0.78]) {
+      const anello = new THREE.Mesh(geoAnelloSbarre, MAT.ferro);
+      anello.scale.set(1, 1, (RY + 0.06) / (RX + 0.06));
+      anello.position.y = y;
+      this.sbarre.add(anello);
+    }
+    this.sbarre.visible = false;
+    this.sbarreY = 0;
+    c.add(this.sbarre);
+
     this.target = new THREE.Vector3();
     this.scalaTarget = 1;
     this.molla = true;
@@ -282,8 +304,9 @@ export class Token {
     this.bolla.visible = ha(m, 'scudoDivino');
     this.ghiaccio.visible = !!m.congelato;
     this.furtivo = ha(m, 'furtivita');
-    this.zzz.visible = m.dorme && !ha(m, 'assalto');
+    this.zzz.visible = m.dorme && !ha(m, 'assalto') && !ha(m, 'carica') && !m.galera;
     this.setSilenziato(m.silenziato);
+    this.setGalera(!!m.galera);
     const icone = [];
     for (const a of m.abilita) if (!['provocazione', 'scudoDivino', 'furtivita'].includes(a)) icone.push(ABILITA[a]?.icona || '');
     if (!m.silenziato) {
@@ -310,8 +333,17 @@ export class Token {
   mostraVita(n, stato) { this.numHp.set(Math.max(0, n), stato); }
   setScudoDivino(v) { this.bolla.visible = v; }
   setCongelato(v) { this.ghiaccio.visible = v; }
-  setSilenziato(v) { this.matRitratto.color.setHex(v ? 0x8a8a8a : 0xffffff); if (v) { this.bolla.visible = false; this.scudo.visible = false; this.impostaIcone(''); } }
+  setSilenziato(v) { this.matRitratto.color.setHex(v || this.sbarre?.visible ? 0x8a8a8a : 0xffffff); if (v) { this.bolla.visible = false; this.scudo.visible = false; this.impostaIcone(''); } }
   setAnello(stato) { this.statoAnello = stato; }
+  // con "cade" le sbarre scendono dall'alto
+  setGalera(v, cade = false) {
+    if (v && !this.sbarre.visible && cade) this.sbarreY = 2.5;
+    this.sbarre.visible = v;
+    if (!v) {
+      this.sbarreY = 0;
+      this.matRitratto.color.setHex(this.m?.silenziato ? 0x8a8a8a : 0xffffff);
+    }
+  }
   scuoti() { this.scossa = 0.32; }
 
   posizione() {
@@ -360,6 +392,11 @@ export class Token {
       this.zzz.material.opacity = 0.7 + 0.3 * Math.sin(t * 2 + this.fase);
     }
     if (this.ghiaccio.visible) this.ghiaccio.material.emissiveIntensity = 0.45 + 0.2 * Math.sin(t * 3 + this.fase);
+    if (this.sbarre.visible) {
+      this.sbarreY = Math.max(0, this.sbarreY - dt * 9);
+      this.sbarre.position.y = this.sbarreY;
+      this.matRitratto.color.setHex(0x8088a0);
+    }
   }
 
   distruggi() {
@@ -409,7 +446,7 @@ export class Eroe3D {
     g.add(this.ritratto);
     this.corpo = new THREE.Group();
     this.ritratto.add(this.corpo);
-    this.matRitratto = new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0 });
+    this.matRitratto = new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0, envMapIntensity: 0.2 });
     const r = new THREE.Mesh(geoRitrattoEroe, [this.matRitratto, MAT_ORO]);
     r.castShadow = true;
     const cornice = new THREE.Mesh(geoCorniceEroe, MAT_ORO);
@@ -507,6 +544,21 @@ export class Eroe3D {
     this.testoMana = null;
     this.manaVisto = 0;
 
+    // Terreno attivo: un anello dorato sulla metà del tavolo di questo giocatore
+    this.anelloTerreno = new THREE.Mesh(new THREE.RingGeometry(2.3, 2.45, 72).rotateX(-PI / 2), matAlone(0xffd34d));
+    this.anelloTerreno.scale.set(1.75, 1, 0.62);
+    this.anelloTerreno.position.set(0, 0.015, Z.campo[lato] - Z.eroe[lato]);
+    this.anelloTerreno.visible = false;
+    g.add(this.anelloTerreno);
+    this.terrenoId = null;
+
+    // Stati permanenti (terreno, simbolo LORO, Bruno) scritti accanto all'eroe
+    this.stati = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+    this.stati.position.set(-1.6, 0.55, lato === 0 ? -0.95 : 0.95);
+    this.stati.visible = false;
+    g.add(this.stati);
+    this.testoStati = '';
+
     // Trappole attive
     this.trappole = new THREE.Group();
     this.trappole.position.set(0, 0.34, -1.02);
@@ -536,6 +588,30 @@ export class Eroe3D {
     this.aggiornaMazzo(p.mazzo.length);
     this.aggiornaMana(p.mana, p.manaMax);
     this.aggiornaTrappole(p.segreti);
+    this.setTerreno(p.terreno?.carta || null);
+    this.aggiornaStati(p);
+  }
+
+  setTerreno(carta) {
+    this.anelloTerreno.visible = !!carta;
+    this.terrenoId = carta ? carta.id : null;
+  }
+
+  aggiornaStati(p) {
+    const parti = [];
+    if (p.terreno) parti.push(`${p.terreno.carta.emoji} ${p.terreno.carta.nome}`);
+    if (p.loro) parti.push('⚜️ LORO');
+    if (p.bruno > 0) parti.push(`🤨 LUI x2`);
+    const testo = parti.join('  ');
+    if (testo === this.testoStati) return;
+    this.testoStati = testo;
+    this.stati.material.map?.dispose();
+    if (!testo) { this.stati.visible = false; this.stati.material.map = null; return; }
+    const { tex, aspetto } = texScritta(testo, { size: 60, fill: '#ffe08a', stroke: '#2a1206' });
+    this.stati.material.map = tex;
+    this.stati.material.needsUpdate = true;
+    this.stati.scale.set(0.3 * aspetto, 0.3, 1);
+    this.stati.visible = true;
   }
 
   mostraVita(n, stato) { this.numHp.set(Math.max(0, n), stato); }
@@ -641,6 +717,7 @@ export class Eroe3D {
       if (g.userData.pop > 0) g.userData.pop = Math.max(0, g.userData.pop - dt * 2.5);
       g.scale.setScalar(1 + Math.sin(g.userData.pop * PI) * 0.6);
     });
+    if (this.anelloTerreno.visible) this.anelloTerreno.material.opacity = 0.35 + 0.15 * Math.sin(t * 1.5);
     this.trappole.children.forEach((gem, i) => {
       gem.rotation.y = t * 1.2 + i;
       gem.position.y = Math.sin(t * 2 + i) * 0.04;

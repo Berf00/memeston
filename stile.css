@@ -123,6 +123,8 @@ button.principale {
 }
 .banner.nemico .banner-testo { color: #d8d0f0; text-shadow: 0 3px 0 #2e2840; font-size: clamp(1.3rem, 5vw, 2.2rem); }
 .banner.trappola .banner-testo { color: #ffd0e4; text-shadow: 0 3px 0 #7a1840, 0 0 24px rgba(255, 111, 174, 0.8); }
+.banner.simbolo { border-color: #ffd34d; box-shadow: 0 0 70px rgba(255, 211, 77, 0.8), var(--ombra); }
+.banner.simbolo .banner-testo { font-size: clamp(2.2rem, 9vw, 4.4rem); color: #fff1b8; }
 .banner-sotto { color: var(--testo-tenue); margin-top: 4px; font-weight: 800; }
 @keyframes banner {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
@@ -195,6 +197,12 @@ button.principale {
   color: #fff; font-family: var(--titoli); font-size: 1.05rem;
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   text-shadow: 0 1px 2px #000, 0 0 3px #000;
+}
+.carta .stelle {
+  position: absolute; left: -4px; top: 24px;
+  color: #ffd34d; font-size: 12px; line-height: 1;
+  writing-mode: vertical-lr;
+  text-shadow: 0 0 2px #000, 0 1px 2px #000;
 }
 .carta .nastro-esempio {
   position: absolute; top: 5px; right: 5px;
@@ -310,6 +318,7 @@ button.principale {
 .cronologia li { color: var(--testo-tenue); }
 .cronologia li:first-child { color: var(--testo); }
 .nota { color: var(--testo-tenue); font-size: 0.9rem; }
+.espansione { margin-bottom: 0; }
 .separatore { margin-top: 28px; border-top: 1px solid var(--pannello-bordo); padding-top: 18px; }
 .opzioni { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0; }
 .opzione { border: 2px solid transparent; }
